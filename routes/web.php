@@ -123,13 +123,16 @@ Route::middleware(['auth'])->group(function () {
 
     // Routes pour les tâches
     Route::controller(TaskController::class)->group(function () {
-        Route::get('/tasks/create', 'create')->name('tasks.create');
-        Route::post('/tasks', 'store')->name('tasks.store');
-        Route::get('/tasks/{task}/edit', 'edit')->name('tasks.edit');
-        Route::put('/tasks/{task}', 'update')->name('tasks.update');
-        Route::delete('/tasks/{task}', 'destroy')->name('tasks.destroy');
-        Route::put('/tasks/{task}/move', 'move')->name('tasks.move');
-        Route::put('/tasks/{task}/toggle-complete', 'toggleComplete')->name('tasks.toggle-complete');
-        Route::post('/tasks/{task}/duplicate', 'duplicate')->name('tasks.duplicate');
+        Route::get('/projects/{project}/tasks/create', 'create')->name('tasks.create');
+        Route::post('/projects/{project}/tasks', 'store')->name('tasks.store');
+        Route::get('/projects/{project}/tasks/{task}', 'show')->name('tasks.show');
+        Route::get('/projects/{project}/tasks/{task}/edit', 'edit')->name('tasks.edit');
+        Route::put('/projects/{project}/tasks/{task}', 'update')->name('tasks.update');
+        Route::delete('/projects/{project}/tasks/{task}', 'destroy')->name('tasks.destroy');
+        Route::put('/projects/{project}/tasks/{task}/move', 'move')->name('tasks.move');
+        Route::put('/projects/{project}/tasks/{task}/toggle-complete', 'toggleComplete')->name('tasks.toggle-complete');
+        Route::post('/projects/{project}/tasks/{task}/duplicate', 'duplicate')->name('tasks.duplicate');
+        Route::post('/projects/{project}/tasks/{task}/assign', 'assignUser')->name('tasks.assign');
+        Route::delete('/projects/{project}/tasks/{task}/unassign', 'unassignUser')->name('tasks.unassign');
     });
 });

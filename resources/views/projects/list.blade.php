@@ -123,65 +123,230 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Filtres et recherche -->
         <div class="mb-6">
-            <form method="GET" action="{{ route('projects.show', $project) }}" class="flex flex-wrap gap-4 items-center">
+            <form method="GET" action="{{ route('projects.show', $project) }}" class="space-y-4">
                 <input type="hidden" name="view" value="list">
                 
-                <!-- Recherche -->
-                <div class="flex-1 min-w-64">
-                    <div class="relative">
-                        <input type="text" 
-                               name="search" 
-                               value="{{ request('search') }}"
-                               placeholder="Rechercher une tâche..."
-                               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
+                <!-- Première ligne : Recherche -->
+                <div class="flex gap-4 items-center">
+                    <div class="flex-1 min-w-64">
+                        <div class="relative">
+                            <input type="text" 
+                                   name="search" 
+                                   value="{{ request('search') }}"
+                                   placeholder="Rechercher une tâche..."
+                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Filtres -->
-                <div class="flex gap-2">
-                    <select name="column" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">Toutes les colonnes</option>
-                        @foreach($project->columns as $column)
-                            <option value="{{ $column->id }}" {{ request('column') == $column->id ? 'selected' : '' }}>
-                                {{ $column->name }}
+                <!-- Deuxième ligne : Filtres et Tri -->
+                <div class="flex flex-wrap gap-4 items-center justify-between">
+                    <!-- Filtres -->
+                    <div class="flex gap-2">
+                        <select name="column" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Toutes les colonnes</option>
+                            @foreach($project->columns as $column)
+                                <option value="{{ $column->id }}" {{ request('column') == $column->id ? 'selected' : '' }}>
+                                    {{ $column->name }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <select name="priority" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Toutes les priorités</option>
+                            <option value="high" {{ request('priority') === 'high' ? 'selected' : '' }}>Haute</option>
+                            <option value="medium" {{ request('priority') === 'medium' ? 'selected' : '' }}>Normale</option>
+                            <option value="low" {{ request('priority') === 'low' ? 'selected' : '' }}>Basse</option>
+                        </select>
+
+                        <select name="status" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Tous les statuts</option>
+                            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Terminées</option>
+                            <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>En cours</option>
+                            <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>En retard</option>
+                        </select>
+
+                        <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:ring-2 focus:ring-indigo-500 text-sm">
+                            Filtrer
+                        </button>
+
+                        @if(request()->hasAny(['search', 'column', 'priority', 'status', 'sort_by', 'sort_direction']))
+                            <a href="{{ route('projects.show', $project) }}?view=list" class="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm">
+                                Réinitialiser
+                            </a>
+                        @endif
+                    </div>
+
+                    <!-- Options de tri -->
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm text-gray-600">Trier par :</label>
+                        <select name="sort_by" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="created_at" {{ request('sort_by') === 'created_at' || !request('sort_by') ? 'selected' : '' }}>Date de création</option>
+                            <option value="updated_at" {{ request('sort_by') === 'updated_at' ? 'selected' : '' }}>Dernière modification</option>
+                            <option value="title" {{ request('sort_by') === 'title' ? 'selected' : '' }}>Titre</option>
+                            <option value="due_date" {{ request('sort_by') === 'due_date' ? 'selected' : '' }}>Date d'échéance</option>
+                            <option value="priority" {{ request('sort_by') === 'priority' ? 'selected' : '' }}>Priorité</option>
+                            <option value="is_completed" {{ request('sort_by') === 'is_completed' ? 'selected' : '' }}>Statut</option>
+                        </select>
+
+                        <select name="sort_direction" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="desc" {{ request('sort_direction') === 'desc' || !request('sort_direction') ? 'selected' : '' }}>
+                                @if(request('sort_by') === 'title')
+                                    Z → A
+                                @elseif(in_array(request('sort_by'), ['due_date', 'created_at', 'updated_at']))
+                                    Plus récent → Plus ancien
+                                @elseif(request('sort_by') === 'priority')
+                                    Haute → Basse
+                                @elseif(request('sort_by') === 'is_completed')
+                                    Terminé → En cours
+                                @else
+                                    Décroissant
+                                @endif
                             </option>
-                        @endforeach
-                    </select>
-
-                    <select name="priority" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">Toutes les priorités</option>
-                        <option value="high" {{ request('priority') === 'high' ? 'selected' : '' }}>Haute</option>
-                        <option value="medium" {{ request('priority') === 'medium' ? 'selected' : '' }}>Normale</option>
-                        <option value="low" {{ request('priority') === 'low' ? 'selected' : '' }}>Basse</option>
-                    </select>
-
-                    <select name="status" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">Tous les statuts</option>
-                        <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Terminées</option>
-                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>En cours</option>
-                        <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>En retard</option>
-                    </select>
-
-                    <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:ring-2 focus:ring-indigo-500 text-sm">
-                        Filtrer
-                    </button>
-
-                    @if(request()->hasAny(['search', 'column', 'priority', 'status']))
-                        <a href="{{ route('projects.show', $project) }}?view=list" class="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm">
-                            Réinitialiser
-                        </a>
-                    @endif
+                            <option value="asc" {{ request('sort_direction') === 'asc' ? 'selected' : '' }}>
+                                @if(request('sort_by') === 'title')
+                                    A → Z
+                                @elseif(in_array(request('sort_by'), ['due_date', 'created_at', 'updated_at']))
+                                    Plus ancien → Plus récent
+                                @elseif(request('sort_by') === 'priority')
+                                    Basse → Haute
+                                @elseif(request('sort_by') === 'is_completed')
+                                    En cours → Terminé
+                                @else
+                                    Croissant
+                                @endif
+                            </option>
+                        </select>
+                    </div>
                 </div>
             </form>
         </div>
 
         <!-- Liste des tâches -->
         <div class="bg-white shadow rounded-lg overflow-hidden">
+            <!-- En-tête avec indicateur de tri -->
+            @if($tasks->isNotEmpty())
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-600">
+                            <span>{{ $tasks->total() }} tâche{{ $tasks->total() > 1 ? 's' : '' }} trouvée{{ $tasks->total() > 1 ? 's' : '' }}</span>
+                            
+                            @if(request('sort_by') && request('sort_by') !== 'created_at')
+                                <span class="ml-4 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                    </svg>
+                                    Triées par 
+                                    @switch(request('sort_by'))
+                                        @case('title')
+                                            titre
+                                            @break
+                                        @case('due_date')
+                                            date d'échéance
+                                            @break
+                                        @case('priority')
+                                            priorité
+                                            @break
+                                        @case('is_completed')
+                                            statut
+                                            @break
+                                        @case('updated_at')
+                                            dernière modification
+                                            @break
+                                        @default
+                                            {{ request('sort_by') }}
+                                    @endswitch
+                                    
+                                    @if(request('sort_direction') === 'asc')
+                                        (croissant)
+                                    @else
+                                        (décroissant)
+                                    @endif
+                                </span>
+                            @endif
+                        </div>
+
+                        <!-- Tri rapide -->
+                        <div class="flex items-center space-x-2 text-sm">
+                            <span class="text-gray-500">Tri rapide :</span>
+                            
+                            <!-- Bouton tri par priorité -->
+                            <a href="{{ route('projects.show', $project) }}?{{ http_build_query(array_merge(request()->all(), ['sort_by' => 'priority', 'sort_direction' => request('sort_by') === 'priority' && request('sort_direction') === 'desc' ? 'asc' : 'desc'])) }}"
+                               class="flex items-center px-2 py-1 rounded text-xs {{ request('sort_by') === 'priority' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700' }}">
+                                Priorité
+                                @if(request('sort_by') === 'priority')
+                                    @if(request('sort_direction') === 'desc')
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                                        </svg>
+                                    @else
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                                        </svg>
+                                    @endif
+                                @endif
+                            </a>
+
+                            <!-- Bouton tri par date d'échéance -->
+                            <a href="{{ route('projects.show', $project) }}?{{ http_build_query(array_merge(request()->all(), ['sort_by' => 'due_date', 'sort_direction' => request('sort_by') === 'due_date' && request('sort_direction') === 'desc' ? 'asc' : 'desc'])) }}"
+                               class="flex items-center px-2 py-1 rounded text-xs {{ request('sort_by') === 'due_date' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700' }}">
+                                Échéance
+                                @if(request('sort_by') === 'due_date')
+                                    @if(request('sort_direction') === 'desc')
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                                        </svg>
+                                    @else
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                                        </svg>
+                                    @endif
+                                @endif
+                            </a>
+
+                            <!-- Bouton tri par titre -->
+                            <a href="{{ route('projects.show', $project) }}?{{ http_build_query(array_merge(request()->all(), ['sort_by' => 'title', 'sort_direction' => request('sort_by') === 'title' && request('sort_direction') === 'desc' ? 'asc' : 'desc'])) }}"
+                               class="flex items-center px-2 py-1 rounded text-xs {{ request('sort_by') === 'title' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700' }}">
+                                Titre
+                                @if(request('sort_by') === 'title')
+                                    @if(request('sort_direction') === 'desc')
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                                        </svg>
+                                    @else
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                                        </svg>
+                                    @endif
+                                @endif
+                            </a>
+
+                            <!-- Bouton tri par statut -->
+                            <a href="{{ route('projects.show', $project) }}?{{ http_build_query(array_merge(request()->all(), ['sort_by' => 'is_completed', 'sort_direction' => request('sort_by') === 'is_completed' && request('sort_direction') === 'desc' ? 'asc' : 'desc'])) }}"
+                               class="flex items-center px-2 py-1 rounded text-xs {{ request('sort_by') === 'is_completed' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700' }}">
+                                Statut
+                                @if(request('sort_by') === 'is_completed')
+                                    @if(request('sort_direction') === 'desc')
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                                        </svg>
+                                    @else
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                                        </svg>
+                                    @endif
+                                @endif
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @forelse($tasks as $task)
                 <div class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                     <div class="px-6 py-4">
@@ -189,7 +354,7 @@
                             <!-- Info principale de la tâche -->
                             <div class="flex items-center space-x-4 flex-1">
                                 <!-- Checkbox pour marquer comme terminé -->
-                                <form method="POST" action="{{ route('tasks.toggle-complete', $task) }}" class="inline">
+                                <form method="POST" action="{{ route('tasks.toggle-complete', [$project, $task]) }}" class="inline">
                                     @csrf
                                     @method('PUT')
                                     <button type="submit" class="flex-shrink-0">
@@ -206,7 +371,7 @@
                                 <!-- Titre et description -->
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center space-x-2">
-                                        <a href="{{ route('tasks.edit', $task) }}" class="text-lg font-medium text-gray-900 hover:text-indigo-600 {{ $task->is_completed ? 'line-through text-gray-500' : '' }}">
+                                        <a href="{{ route('tasks.edit', [$project, $task]) }}" class="text-lg font-medium text-gray-900 hover:text-indigo-600 {{ $task->is_completed ? 'line-through text-gray-500' : '' }}">
                                             {{ $task->title }}
                                         </a>
                                         
@@ -262,12 +427,12 @@
 
                                 <!-- Actions -->
                                 <div class="flex items-center space-x-1">
-                                    <a href="{{ route('tasks.edit', $task) }}" class="text-gray-400 hover:text-indigo-600 p-1" title="Modifier">
+                                    <a href="{{ route('tasks.edit', [$project, $task]) }}" class="text-gray-400 hover:text-indigo-600 p-1" title="Modifier">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
                                     </a>
-                                    <form method="POST" action="{{ route('tasks.destroy', $task) }}" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')">
+                                    <form method="POST" action="{{ route('tasks.destroy', [$project, $task]) }}" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-gray-400 hover:text-red-600 p-1" title="Supprimer">
@@ -338,7 +503,7 @@
                         </a>
                     </div>
 
-                    <form action="{{ route('tasks.store') }}" method="POST" class="space-y-4">
+                    <form action="{{ route('tasks.store', $project) }}" method="POST" class="space-y-4">
                         @csrf
                         <input type="hidden" name="project_id" value="{{ $project->id }}">
                         <input type="hidden" name="redirect_view" value="list">

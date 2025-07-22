@@ -4,7 +4,7 @@
 
 @section('content')
 <!-- Bloquer le scroll du body quand le modal est ouvert -->
-@if(request('show_modal') === 'create_task')
+@if(request('show_modal') === 'create_task' || request('show_modal') === 'edit_task')
     <style>
         body { overflow: hidden; }
     </style>
@@ -159,7 +159,7 @@
                                     <!-- Tâche header -->
                                     <div class="flex items-start justify-between mb-2">
                                         <h4 class="text-sm font-medium text-gray-900 leading-5">
-                                            <a href="{{ route('tasks.edit', $task) }}" class="hover:text-indigo-600">
+                                            <a href="{{ route('projects.show', $project) }}?show_modal=edit_task&task_id={{ $task->id }}" class="hover:text-indigo-600">
                                                 {{ $task->title }}
                                             </a>
                                         </h4>
@@ -206,12 +206,12 @@
                                             
                                             <!-- Boutons d'action -->
                                             <div class="flex items-center space-x-1">
-                                                <a href="{{ route('tasks.edit', $task) }}" class="text-gray-400 hover:text-indigo-600 p-1" title="Modifier">
+                                                <a href="{{ route('projects.show', $project) }}?show_modal=edit_task&task_id={{ $task->id }}" class="text-gray-400 hover:text-indigo-600 p-1" title="Modifier">
                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                     </svg>
                                                 </a>
-                                                <form method="POST" action="{{ route('tasks.destroy', $task) }}" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')">
+                                                <form method="POST" action="{{ route('tasks.destroy', [$project, $task]) }}" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="text-gray-400 hover:text-red-600 p-1" title="Supprimer">
@@ -249,140 +249,15 @@
         </div>
     </div>
 
-    <!-- Modal nouvelle tâche -->
-    @if(request('show_modal') === 'create_task')
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" style="backdrop-filter: blur(2px);">
-            <!-- Zone cliquable pour fermer le modal -->
-            <div class="absolute inset-0" onclick="window.location.href='{{ route('projects.show', $project) }}'"></div>
-            
-            <!-- Contenu du modal -->
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto relative z-10" onclick="event.stopPropagation();">
-                <div class="p-6">
-                    <!-- Header avec bouton fermer -->
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Nouvelle tâche</h3>
-                        <a href="{{ route('projects.show', $project) }}" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </a>
-                    </div>
-
-                    <form action="{{ route('tasks.store') }}" method="POST" class="space-y-4">
-                        @csrf
-                        <input type="hidden" name="project_id" value="{{ $project->id }}">
-                        
-                        @if(request('column_id'))
-                            <input type="hidden" name="column_id" value="{{ request('column_id') }}">
-                        @endif
-
-                        <!-- Titre -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
-                            <input type="text" 
-                                   name="title" 
-                                   value="{{ old('title') }}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm {{ $errors->has('title') ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : '' }}"
-                                   placeholder="Entrez le titre de la tâche"
-                                   required
-                                   autofocus>
-                            @error('title')
-                                <p class="mt-1 text-sm text-red-600 flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    {{ $message }}
-                                </p>
-                            @enderror
-                        </div>
-
-                        <!-- Description -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <textarea name="description" 
-                                      rows="3"
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm {{ $errors->has('description') ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : '' }}"
-                                      placeholder="Décrivez cette tâche (optionnel)">{{ old('description') }}</textarea>
-                            @error('description')
-                                <p class="mt-1 text-sm text-red-600 flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    {{ $message }}
-                                </p>
-                            @enderror
-                        </div>
-
-                        <!-- Colonne -->
-                        @if($project->columns->isNotEmpty())
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Colonne *</label>
-                                <select name="column_id" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm {{ $errors->has('column_id') ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : '' }}"
-                                        required>
-                                    @foreach($project->columns as $column)
-                                        <option value="{{ $column->id }}" {{ (request('column_id') == $column->id || old('column_id') == $column->id) ? 'selected' : '' }}>
-                                            {{ $column->name }} ({{ $column->tasks->count() }} tâches)
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('column_id')
-                                    <p class="mt-1 text-sm text-red-600 flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        {{ $message }}
-                                    </p>
-                                @enderror
-                            </div>
-                        @endif
-
-                        <!-- Priorité et Date d'échéance sur la même ligne -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <!-- Priorité -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Priorité</label>
-                                <select name="priority" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm {{ $errors->has('priority') ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : '' }}">
-                                    <option value="low" {{ old('priority') === 'low' ? 'selected' : '' }}>🔵 Basse</option>
-                                    <option value="medium" {{ old('priority') === 'medium' || !old('priority') ? 'selected' : '' }}>⚪ Normale</option>
-                                    <option value="high" {{ old('priority') === 'high' ? 'selected' : '' }}>🔴 Haute</option>
-                                </select>
-                                @error('priority')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Date d'échéance -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Échéance</label>
-                                <input type="date" 
-                                       name="due_date"
-                                       value="{{ old('due_date') }}"
-                                       min="{{ date('Y-m-d') }}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm {{ $errors->has('due_date') ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : '' }}">
-                                @error('due_date')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="flex justify-end space-x-3 pt-6 border-t mt-6">
-                            <a href="{{ route('projects.show', $project) }}" 
-                               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                Annuler
-                            </a>
-                            <button type="submit" 
-                                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                Créer la tâche
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    @endif
+    <!-- Modal unifié pour créer/éditer une tâche -->
+    @include('tasks.modals.task-form')
+    
+    <!-- Notification toast -->
+    @include('components.toast')
+    
+    <!-- Styles et scripts des modals -->
+    @include('tasks.modals.styles')
+    @include('tasks.modals.scripts')
 </div>
 
 <style>

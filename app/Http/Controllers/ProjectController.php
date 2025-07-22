@@ -108,7 +108,18 @@ class ProjectController extends Controller
      */
     private function showKanbanView(Project $project)
     {
-        return view('projects.show', compact('project'));
+        // Data needed for modals
+        $users = $project->allUsers();
+        $categories = $project->categories;
+        $editTask = null;
+        
+        // If edit modal is requested, load the task
+        if (request('show_modal') === 'edit_task' && request('task_id')) {
+            $editTask = $project->tasks()->with(['assignedUsers', 'category', 'creator', 'column'])
+                ->findOrFail(request('task_id'));
+        }
+        
+        return view('projects.show', compact('project', 'users', 'categories', 'editTask'));
     }
 
     /**
@@ -154,7 +165,49 @@ class ProjectController extends Controller
             }
         }
 
-        $tasks = $query->orderBy('created_at', 'desc')->paginate(20);
+        // Système de tri
+        $sortBy = request('sort_by', 'created_at');
+        $sortDirection = request('sort_direction', 'desc');
+
+        // Validation des options de tri
+        $allowedSorts = [
+            'created_at', 'title', 'due_date', 'priority', 'is_completed', 'updated_at'
+        ];
+        
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'created_at';
+        }
+
+        if (!in_array($sortDirection, ['asc', 'desc'])) {
+            $sortDirection = 'desc';
+        }
+
+        // Application du tri
+        switch ($sortBy) {
+            case 'priority':
+                // Tri personnalisé pour la priorité : high > medium > low
+                $query->orderByRaw("CASE 
+                    WHEN priority = 'high' THEN 1 
+                    WHEN priority = 'medium' THEN 2 
+                    WHEN priority = 'low' THEN 3 
+                    ELSE 4 
+                END " . ($sortDirection === 'desc' ? 'ASC' : 'DESC'));
+                break;
+            case 'due_date':
+                // Les tâches sans date d'échéance à la fin
+                $query->orderByRaw("due_date IS NULL, due_date " . $sortDirection);
+                break;
+            default:
+                $query->orderBy($sortBy, $sortDirection);
+                break;
+        }
+
+        // Tri secondaire par date de création pour la consistance
+        if ($sortBy !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $tasks = $query->paginate(20);
 
         return view('projects.list', compact('project', 'tasks'));
     }

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.default')
 
 @section('content')
 <div class="min-h-screen bg-gray-50 py-6">
@@ -22,7 +22,7 @@
 
         <!-- Formulaire -->
         <div class="bg-white rounded-lg shadow">
-            <form action="{{ route('tasks.store') }}" method="POST" class="p-6 space-y-6">
+            <form action="{{ route('tasks.store', $project) }}" method="POST" class="p-6 space-y-6">
                 @csrf
                 <input type="hidden" name="project_id" value="{{ $project->id }}">
                 

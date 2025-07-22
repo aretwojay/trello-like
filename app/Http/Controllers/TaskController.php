@@ -14,17 +14,9 @@ class TaskController extends Controller
     /**
      * Show the form for creating a new task.
      */
-    public function create(Request $request)
+    public function create(Project $project, Request $request)
     {
-        $project_id = $request->get('project_id');
         $column_id = $request->get('column_id');
-        
-        if (!$project_id) {
-            return redirect()->route('projects.index')
-                ->with('error', 'Projet requis pour créer une tâche.');
-        }
-
-        $project = Project::findOrFail($project_id);
         
         // Check if user has access to this project
         if (!$project->hasAccess(Auth::user())) {
@@ -33,7 +25,7 @@ class TaskController extends Controller
 
         $columns = $project->columns;
         $users = $project->allUsers();
-        $categories = Auth::user()->categories;
+        $categories = $project->categories;
 
         return view('tasks.create', compact('project', 'columns', 'users', 'categories', 'column_id'));
     }
@@ -41,10 +33,14 @@ class TaskController extends Controller
     /**
      * Store a newly created task in storage.
      */
-    public function store(Request $request)
+    public function store(Project $project, Request $request)
     {
+        // Check if user has access to this project
+        if (!$project->hasAccess(Auth::user())) {
+            abort(403, 'Vous n\'avez pas accès à ce projet.');
+        }
+
         $validator = Validator::make($request->all(), [
-            'project_id' => 'required|exists:projects,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'priority' => 'nullable|in:low,medium,high',
@@ -57,34 +53,20 @@ class TaskController extends Controller
 
         if ($validator->fails()) {
             // Rediriger vers le projet avec le modal ouvert et les erreurs
-            $project = Project::find($request->project_id);
-            if ($project) {
-                $redirect_url = route('projects.show', $project) . '?show_modal=create_task';
-                
-                // Conserver la vue si elle vient de la vue liste
-                if ($request->redirect_view === 'list') {
-                    $redirect_url .= '&view=list';
-                }
-                
-                if ($request->column_id) {
-                    $redirect_url .= '&column_id=' . $request->column_id;
-                }
-                
-                return redirect($redirect_url)
-                    ->withErrors($validator)
-                    ->withInput();
+            $redirect_url = route('projects.show', $project) . '?show_modal=create_task';
+            
+            // Conserver la vue si elle vient de la vue liste
+            if ($request->redirect_view === 'list') {
+                $redirect_url .= '&view=list';
             }
             
-            return redirect()->back()
+            if ($request->column_id) {
+                $redirect_url .= '&column_id=' . $request->column_id;
+            }
+            
+            return redirect($redirect_url)
                 ->withErrors($validator)
                 ->withInput();
-        }
-
-        $project = Project::findOrFail($request->project_id);
-
-        // Check if user has access to this project
-        if (!$project->hasAccess(Auth::user())) {
-            abort(403, 'Vous n\'avez pas accès à ce projet.');
         }
 
         // Verify column belongs to the project
@@ -158,6 +140,32 @@ class TaskController extends Controller
     }
 
     /**
+     * Show the form for editing the specified task.
+     */
+    public function edit(Project $project, Task $task)
+    {
+        // Check if user has access to this project
+        if (!$project->hasAccess(Auth::user())) {
+            abort(403, 'Vous n\'avez pas accès à ce projet.');
+        }
+
+        // Verify task belongs to the project
+        if ($task->project_id !== $project->id) {
+            abort(404);
+        }
+
+        // Load necessary relationships
+        $task->load(['assignedUsers', 'category', 'creator', 'column']);
+        $project->load(['columns']);
+        $columns = $project->columns;
+
+        $users = $project->allUsers();
+        $categories = $project->categories;
+
+        return view('tasks.edit', compact('project', 'task', 'columns', 'users', 'categories'));
+    }
+
+    /**
      * Update the specified task in storage.
      */
     public function update(Request $request, Project $project, Task $task)
@@ -206,7 +214,15 @@ class TaskController extends Controller
             $validUserIds = $project->allUsers()->pluck('id')->toArray();
             $assignedUserIds = array_intersect($request->assigned_users ?? [], $validUserIds);
             
-            $task->assignedUsers()->sync($assignedUserIds);
+            // Détacher tous les utilisateurs actuels
+            $task->assignedUsers()->detach();
+            
+            // Réattacher les nouveaux utilisateurs avec assigned_at
+            if (!empty($assignedUserIds)) {
+                $task->assignedUsers()->attach($assignedUserIds, [
+                    'assigned_at' => now(),
+                ]);
+            }
         }
 
         if ($request->ajax()) {
@@ -217,7 +233,7 @@ class TaskController extends Controller
             ]);
         }
 
-        return redirect()->back()
+        return redirect()->route('projects.show', $project)
             ->with('success', 'Tâche modifiée avec succès !');
     }
 
@@ -384,5 +400,40 @@ class TaskController extends Controller
             'success' => true,
             'message' => "Utilisateur {$user->name} retiré de la tâche.",
         ]);
+    }
+
+    /**
+     * Duplicate a task.
+     */
+    public function duplicate(Project $project, Task $task)
+    {
+        // Check if user has access to this project
+        if (!$project->hasAccess(Auth::user())) {
+            abort(403, 'Vous n\'avez pas accès à ce projet.');
+        }
+
+        // Verify task belongs to the project
+        if ($task->project_id !== $project->id) {
+            abort(404);
+        }
+
+        // Create a duplicate task
+        $duplicateTask = $task->replicate();
+        $duplicateTask->title = $task->title . ' (Copie)';
+        $duplicateTask->is_completed = false;
+        $duplicateTask->completed_at = null;
+        $duplicateTask->creator_id = Auth::id();
+        $duplicateTask->save();
+
+        // Copy assigned users
+        $assignedUserIds = $task->assignedUsers->pluck('id')->toArray();
+        if (!empty($assignedUserIds)) {
+            $duplicateTask->assignedUsers()->attach($assignedUserIds, [
+                'assigned_at' => now(),
+            ]);
+        }
+
+        return redirect()->route('projects.show', $project)
+            ->with('success', "La tâche '{$task->title}' a été dupliquée avec succès.");
     }
 }
